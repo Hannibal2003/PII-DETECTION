@@ -26,11 +26,12 @@ const PII_PATTERNS = {
   Name: /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b|(\b[A-Z]+\b(?:\s+[A-Z]+\b){1,2})/g,
   Mobile: /(\+?[\-\s]?(?:91[\-\s]?)?[6-9]{1}[0-9]{3}[\-\s]?[0-9]{6})|([6-9]{1}[0-9]{3}[\-\s]?[0-9]{6})/g,
   Email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
-  Aadhaar: /\b([2-9]{1}[0-9]{3}[\s-]?[0-9]{4}[\s-]?[0-9]{4})\b/g,
+  Aadhaar: /\b(?:\d[ -]?){12}\b/g,
   CreditCard: /\b(?:\d[ -]?){13,19}\b/g,
   BankAccount: /\b([0-9]{9,18})\b|([A-Za-z]{2}[0-9]{2}[A-Za-z0-9]{4,30})/g,
   Address: /\b\d+(?:\/\d+)?(?:,\s*|\s+)[A-Za-z0-9\s,.-]+(?:road|street|avenue|lane|nagar|colony|layout|Road|Street|Tamil\s*Nadu|Karnataka|Maharashtra|Delhi|Uttar\s*Pradesh|Gujarat|West\s*Bengal|Rajasthan)\b/gi,
 };
+
 
 // Common obfuscation patterns
 const OBFUSCATION_PATTERNS = {
@@ -58,9 +59,12 @@ export const maskPii = (value: string, type: PiiType): string => {
         .replace(/(\d{1,4})/g, '****')
         .replace(/([A-Za-z0-9\s]+)(?:road|street|avenue|lane|nagar|colony|layout)/gi, '$1****');
     case 'Aadhaar':
-      return value.slice(0, -4).replace(/[0-9]/g, 'A') + value.slice(-4);
+      const aadhaarDigits = value.replace(/\D/g, ''); // Remove non-digits
+      return aadhaarDigits.slice(0, 4) + ' ' + 'A'.repeat(4) + ' ' + 'A'.repeat(4);      
     case 'CreditCard':
-      return value.slice(0, -4).replace(/[0-9]/g, 'C') + value.slice(-4);
+      const digits = value.replace(/\D/g, ''); // Remove spaces/hyphens
+      const masked = 'C'.repeat(digits.length - 4) + digits.slice(-4);
+      return masked.match(/.{1,4}/g)?.join(' ') || masked;
     case 'BankAccount':
       return value.slice(0, -4).replace(/[0-9]/g, '*') + value.slice(-4);
     default:
@@ -122,7 +126,8 @@ export const detectPii = (text: string): PiiMatch[] => {
           });
         }
         // Check if it could be Aadhaar
-        else if (/^[2-9]\d{11}$/.test(normalized)) {
+        else if (/^[2-9]{1}[0-9]{11}$/.test(normalized) || /^[2-9]{1}[0-9]{3}[0-9]{4}[0-9]{4}$/.test(normalized)) {
+
           matches.push({
             type: 'Aadhaar',
             value: match,
