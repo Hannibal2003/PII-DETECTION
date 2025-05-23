@@ -41,33 +41,37 @@ const Index = () => {
     }
   };
 
-  const analyzeText = () => {
+  const analyzeText = async () => { // Make the function async
     if (!text.trim()) {
       toast.error("Please enter some text or upload a file first");
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate processing delay for demo purposes
-    setTimeout(() => {
-      try {
-        const matches = detectPii(text);
-        setPiiMatches(matches);
-        setIsAnalyzed(true);
-        
-        if (matches.length > 0) {
-          toast.success(`Detected ${matches.length} PII instances`);
-        } else {
-          toast.info("No PII detected in the text");
-        }
-      } catch (error) {
-        console.error("Error analyzing text:", error);
-        toast.error("Error analyzing text. Please try again.");
-      } finally {
-        setIsLoading(false);
+    setIsAnalyzed(false); // Reset analysis state
+    setPiiMatches([]);    // Clear previous matches
+
+    try {
+      const matches = await detectPii(text); // Await the async function result
+      setPiiMatches(matches);
+      setIsAnalyzed(true);
+      
+      if (matches.length > 0) {
+        toast.success(`Detected ${matches.length} PII instances`);
+      } else {
+        toast.info("No PII detected in the text");
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Error analyzing text:", error);
+      // Check if error is an instance of Error to safely access message
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during analysis.";
+      toast.error(`Error analyzing text: ${errorMessage}`);
+      // Ensure state reflects that analysis didn't complete successfully
+      setIsAnalyzed(false);
+      setPiiMatches([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleExport = () => {
